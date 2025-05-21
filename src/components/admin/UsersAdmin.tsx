@@ -29,13 +29,7 @@ const UsersAdmin = () => {
     queryFn: async () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          email:id (
-            email:auth.users!id(email),
-            created_at:auth.users!id(created_at)
-          )
-        `);
+        .select('*, auth_user:id(email:auth.users(email), created_at:auth.users(created_at))');
       
       if (error) throw error;
       return profiles;
@@ -54,15 +48,15 @@ const UsersAdmin = () => {
   };
 
   const getUserEmail = (user: any) => {
-    if (user.email && user.email[0] && user.email[0].email) {
-      return user.email[0].email;
+    if (user.auth_user && user.auth_user[0] && user.auth_user[0].email) {
+      return user.auth_user[0].email;
     }
     return 'No email';
   };
 
   const getCreatedAt = (user: any) => {
-    if (user.email && user.email[0] && user.email[0].created_at) {
-      return formatDate(user.email[0].created_at);
+    if (user.auth_user && user.auth_user[0] && user.auth_user[0].created_at) {
+      return formatDate(user.auth_user[0].created_at);
     }
     return formatDate(user.created_at);
   };
@@ -112,7 +106,7 @@ const UsersAdmin = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getRoleBadge(user.role)}
+                        {getRoleBadge(user.role || 'customer')}
                       </TableCell>
                       <TableCell>{getCreatedAt(user)}</TableCell>
                       <TableCell className="text-right">

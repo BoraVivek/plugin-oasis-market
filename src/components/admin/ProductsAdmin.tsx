@@ -52,7 +52,7 @@ const ProductsAdmin = () => {
   // Form state
   const [formData, setFormData] = useState({
     title: '',
-    platform: 'WordPress',
+    platform: 'WordPress' as 'WordPress' | 'XenForo',
     category: 'Plugins',
     price: 0,
     description: '',
@@ -78,10 +78,20 @@ const ProductsAdmin = () => {
 
   // Create product mutation
   const createProductMutation = useMutation({
-    mutationFn: async (productData: Partial<Product>) => {
+    mutationFn: async (productData: {
+      title: string;
+      platform: 'WordPress' | 'XenForo';
+      category: string;
+      price: number;
+      description: string;
+      author: string;
+      image: string;
+      tags: string[];
+      version: string;
+    }) => {
       const { data, error } = await supabase
         .from('products')
-        .insert([productData])
+        .insert(productData)
         .select()
         .single();
       
@@ -102,10 +112,26 @@ const ProductsAdmin = () => {
 
   // Update product mutation
   const updateProductMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: Partial<Product> }) => {
+    mutationFn: async ({ id, data }: { 
+      id: string, 
+      data: {
+        title: string;
+        platform: 'WordPress' | 'XenForo';
+        category: string;
+        price: number;
+        description: string;
+        author: string;
+        image: string;
+        tags: string[];
+        version: string;
+      }
+    }) => {
       const { data: updatedData, error } = await supabase
         .from('products')
-        .update(data)
+        .update({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
@@ -184,7 +210,6 @@ const ProductsAdmin = () => {
           ...formData,
           price: parseFloat(formData.price.toString()),
           tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
-          updated_at: new Date().toISOString(),
         }
       });
     } finally {

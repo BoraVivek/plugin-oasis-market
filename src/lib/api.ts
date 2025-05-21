@@ -175,11 +175,16 @@ export async function getCartItems() {
 
 export async function addToCart(productId: string, quantity: number = 1) {
   try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User must be logged in to add to cart');
+
     // First check if the item is already in the cart
     const { data: existingItems } = await supabase
       .from('cart_items')
       .select('*')
-      .eq('product_id', productId);
+      .eq('product_id', productId)
+      .eq('user_id', user.id);
     
     if (existingItems && existingItems.length > 0) {
       // Update quantity
@@ -197,7 +202,11 @@ export async function addToCart(productId: string, quantity: number = 1) {
       // Add new item
       const { error } = await supabase
         .from('cart_items')
-        .insert({ product_id: productId, quantity });
+        .insert({ 
+          product_id: productId, 
+          user_id: user.id,
+          quantity 
+        });
       
       if (error) throw error;
       
@@ -262,9 +271,16 @@ export async function getWishlistItems() {
 
 export async function addToWishlist(productId: string) {
   try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User must be logged in to add to wishlist');
+
     const { error } = await supabase
       .from('wishlist_items')
-      .insert({ product_id: productId });
+      .insert({ 
+        product_id: productId,
+        user_id: user.id
+      });
     
     if (error) throw error;
     

@@ -74,10 +74,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     if (data) {
+      const userRole = data.role as 'admin' | 'vendor' | 'customer';
       setUser({
         id: userId,
         email: session?.user?.email || '',
-        role: data.role || 'customer',
+        role: userRole || 'customer',
         first_name: data.first_name,
         last_name: data.last_name,
         avatar_url: data.avatar_url,
@@ -121,8 +122,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       toast.success('Account created successfully! Please check your email for verification.');
-      
-      return data;
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
