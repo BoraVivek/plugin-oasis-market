@@ -3,6 +3,10 @@ import { Heart, Star } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from 'react-router-dom';
+import { useWishlist } from '@/contexts/WishlistContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { formatPrice } from '@/lib/utils';
 
 export interface ProductCardProps {
   id: string;
@@ -27,6 +31,25 @@ const ProductCard = ({
   author,
   sales = 0
 }: ProductCardProps) => {
+  const { user } = useAuth();
+  const { addItem, removeItem, items, isInWishlist } = useWishlist();
+  
+  const wishlistItem = items.find(item => item.product_id === id);
+  const inWishlist = isInWishlist(id);
+
+  const handleWishlistToggle = () => {
+    if (!user) {
+      toast.error('Please sign in to add items to your wishlist');
+      return;
+    }
+
+    if (inWishlist && wishlistItem) {
+      removeItem(wishlistItem.id);
+    } else {
+      addItem(id);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg overflow-hidden border border-border card-hover">
       <Link to={`/product/${id}`}>
@@ -45,8 +68,13 @@ const ProductCard = ({
           <Link to={`/product/${id}`} className="hover:underline">
             <h3 className="font-medium text-lg line-clamp-1">{title}</h3>
           </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-            <Heart className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`h-8 w-8 ${inWishlist ? 'text-primary' : 'text-muted-foreground'}`}
+            onClick={handleWishlistToggle}
+          >
+            <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
           </Button>
         </div>
         
@@ -62,7 +90,7 @@ const ProductCard = ({
           </div>
           
           <div className="text-success font-semibold">
-            {price > 0 ? `$${price.toFixed(2)}` : 'Free'}
+            {formatPrice(price)}
           </div>
         </div>
       </div>

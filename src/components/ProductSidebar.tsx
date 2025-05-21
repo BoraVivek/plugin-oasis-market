@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -8,8 +7,15 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Download, Heart, Share, ShoppingCart, Star } from 'lucide-react';
+import { formatPrice, formatDate } from '@/lib/utils';
+import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface ProductSidebarProps {
+  productId: string;
   price: number;
   downloadCount: number;
   rating: number;
@@ -22,6 +28,7 @@ interface ProductSidebarProps {
 }
 
 const ProductSidebar = ({
+  productId,
   price,
   downloadCount,
   rating,
@@ -32,16 +39,69 @@ const ProductSidebar = ({
   lastUpdate,
   tags
 }: ProductSidebarProps) => {
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { addItem } = useCart();
+  const { addItem: addToWishlist, removeItem, items, isInWishlist } = useWishlist();
+  const { user } = useAuth();
+  
+  const wishlistItem = items.find(item => item.product_id === productId);
+  const inWishlist = isInWishlist(productId);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Please sign in to add items to your cart');
+      return;
+    }
+    
+    setIsAddingToCart(true);
+    try {
+      await addItem(productId);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleWishlistToggle = () => {
+    if (!user) {
+      toast.error('Please sign in to add items to your wishlist');
+      return;
+    }
+
+    if (inWishlist && wishlistItem) {
+      removeItem(wishlistItem.id);
+    } else {
+      addToWishlist(productId);
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: document.title,
+        url: window.location.href
+      })
+        .then(() => console.log('Shared successfully'))
+        .catch((error) => console.log('Error sharing:', error));
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard');
+    }
+  };
+
   return (
     <Card>
       <CardContent className="pt-6 space-y-6">
         <div>
           <div className="text-2xl font-bold text-success mb-4">
-            {price > 0 ? `$${price.toFixed(2)}` : 'Free'}
+            {formatPrice(price)}
           </div>
           
           <div className="space-y-4">
-            <Button className="w-full">
+            <Button 
+              className="w-full"
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+            >
               {price > 0 ? (
                 <>
                   <ShoppingCart className="mr-2 h-4 w-4" />
@@ -56,11 +116,15 @@ const ProductSidebar = ({
             </Button>
             
             <div className="flex space-x-2">
-              <Button variant="outline" className="flex-1">
-                <Heart className="mr-2 h-4 w-4" />
-                Wishlist
+              <Button 
+                variant={inWishlist ? "default" : "outline"}
+                className="flex-1"
+                onClick={handleWishlistToggle}
+              >
+                <Heart className={`mr-2 h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
+                {inWishlist ? 'Wishlisted' : 'Wishlist'}
               </Button>
-              <Button variant="outline" className="flex-1">
+              <Button variant="outline" className="flex-1" onClick={handleShare}>
                 <Share className="mr-2 h-4 w-4" />
                 Share
               </Button>
@@ -104,14 +168,18 @@ const ProductSidebar = ({
             <div className="text-sm text-muted-foreground">Category</div>
             <div className="font-medium">{category}</div>
           </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Released</div>
-            <div className="font-medium">{releaseDate}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Last Updated</div>
-            <div className="font-medium">{lastUpdate}</div>
-          </div>
+          {releaseDate && (
+            <div>
+              <div className="text-sm text-muted-foreground">Released</div>
+              <div className="font-medium">{formatDate(releaseDate)}</div>
+            </div>
+          )}
+          {lastUpdate && (
+            <div>
+              <div className="text-sm text-muted-foreground">Last Updated</div>
+              <div className="font-medium">{formatDate(lastUpdate)}</div>
+            </div>
+          )}
         </div>
         
         {tags.length > 0 && (
