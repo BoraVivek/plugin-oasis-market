@@ -1,23 +1,22 @@
 
-import { Heart, Star } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Link } from 'react-router-dom';
-import { useWishlist } from '@/contexts/WishlistContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { formatPrice } from '@/lib/utils';
+import { Star, Download } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
 
-export interface ProductCardProps {
+interface ProductCardProps {
   id: string;
   title: string;
   image: string;
   price: number;
-  rating: number;
-  platform: 'WordPress' | 'XenForo';
-  category: string;
-  author: string;
+  rating?: number;
+  platform?: string;
+  category?: string;
+  author?: string;
   sales?: number;
+  version?: string;
 }
 
 const ProductCard = ({
@@ -25,76 +24,109 @@ const ProductCard = ({
   title,
   image,
   price,
-  rating,
+  rating = 0,
   platform,
   category,
   author,
-  sales = 0
+  sales = 0,
+  version,
 }: ProductCardProps) => {
-  const { user } = useAuth();
-  const { addItem, removeItem, items, isInWishlist } = useWishlist();
-  
-  const wishlistItem = items.find(item => item.product_id === id);
-  const inWishlist = isInWishlist(id);
+  const navigate = useNavigate();
 
-  const handleWishlistToggle = () => {
-    if (!user) {
-      toast.error('Please sign in to add items to your wishlist');
-      return;
+  const handleClick = () => {
+    navigate(`/product/${id}`);
+  };
+
+  // Generate stars based on rating
+  const renderRating = () => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 1; i <= 5; i++) {
+      if (i <= fullStars) {
+        stars.push(
+          <Star key={i} className="fill-yellow-400 text-yellow-400 h-4 w-4" />
+        );
+      } else if (i === fullStars + 1 && hasHalfStar) {
+        stars.push(
+          <div key={i} className="relative">
+            <Star className="text-gray-300 h-4 w-4" />
+            <div className="absolute top-0 left-0 overflow-hidden w-1/2">
+              <Star className="fill-yellow-400 text-yellow-400 h-4 w-4" />
+            </div>
+          </div>
+        );
+      } else {
+        stars.push(<Star key={i} className="text-gray-300 h-4 w-4" />);
+      }
     }
 
-    if (inWishlist && wishlistItem) {
-      removeItem(wishlistItem.id);
-    } else {
-      addItem(id);
-    }
+    return stars;
   };
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden border border-border card-hover">
-      <Link to={`/product/${id}`}>
-        <div className="aspect-[4/3] relative overflow-hidden">
-          <img src={image} alt={title} className="w-full h-full object-cover" />
-          <div className="absolute top-3 left-3 flex gap-2">
-            <Badge variant="secondary" className="bg-white/80 text-secondary hover:bg-white/70">
-              {platform}
-            </Badge>
-          </div>
-        </div>
-      </Link>
-      
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-1">
-          <Link to={`/product/${id}`} className="hover:underline">
-            <h3 className="font-medium text-lg line-clamp-1">{title}</h3>
-          </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-8 w-8 ${inWishlist ? 'text-primary' : 'text-muted-foreground'}`}
-            onClick={handleWishlistToggle}
-          >
-            <Heart className={`h-4 w-4 ${inWishlist ? 'fill-current' : ''}`} />
-          </Button>
-        </div>
+    <Card 
+      className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-md"
+      onClick={handleClick}
+      data-event="product-card-click"
+      data-event-category="Product"
+      data-event-label={title}
+      data-product-id={id}
+    >
+      <div className="aspect-[16/9] relative bg-muted">
+        <img
+          src={image}
+          alt={title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
         
-        <p className="text-sm text-muted-foreground mb-3">by {author}</p>
+        {platform && (
+          <div className="absolute top-2 left-2">
+            <Badge variant="secondary">{platform}</Badge>
+          </div>
+        )}
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-            <span className="text-sm font-medium">{rating.toFixed(1)}</span>
-            {sales > 0 && (
-              <span className="text-xs text-muted-foreground">({sales} sales)</span>
-            )}
+        {version && (
+          <div className="absolute top-2 right-2">
+            <Badge variant="outline" className="bg-white/80">v{version}</Badge>
           </div>
-          
-          <div className="text-success font-semibold">
-            {formatPrice(price)}
-          </div>
-        </div>
+        )}
       </div>
-    </div>
+
+      <CardContent className="flex-1 p-4">
+        <div className="flex justify-between items-start">
+          <h3 className="font-semibold truncate">{title}</h3>
+          <span className="font-semibold text-green-600">{formatPrice(price)}</span>
+        </div>
+        
+        {category && (
+          <div className="mt-1 text-sm text-muted-foreground truncate">
+            {category}
+          </div>
+        )}
+        
+        {author && (
+          <div className="mt-2 text-sm">
+            by <span className="text-primary">{author}</span>
+          </div>
+        )}
+        
+        <div className="flex justify-between items-center mt-3">
+          <div className="flex">{renderRating()}</div>
+          {sales > 0 && (
+            <div className="text-xs text-muted-foreground flex items-center">
+              <Download className="h-3 w-3 mr-1" /> {sales}
+            </div>
+          )}
+        </div>
+      </CardContent>
+
+      <CardFooter className="px-4 pb-4 pt-0">
+        <Button variant="secondary" className="w-full">View Details</Button>
+      </CardFooter>
+    </Card>
   );
 };
 

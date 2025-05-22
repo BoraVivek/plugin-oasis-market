@@ -1,249 +1,305 @@
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import Navbar from '@/components/Navbar';
+import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
 import ProductCard from '@/components/ProductCard';
-import { Button } from '@/components/ui/button';
 import { getProducts } from '@/lib/api';
-import { Product } from '@/lib/types';
-import { ArrowRight, Sparkles, Heart, Download, HelpCircle } from 'lucide-react';
+import { Loader2, ChevronRight, Download, Star, CheckCircle } from 'lucide-react';
 
 const Home = () => {
   const navigate = useNavigate();
   
-  // Fetch featured products (newest and most popular)
-  const { data: featuredProducts } = useQuery({
-    queryKey: ['featuredProducts'],
+  // Fetch latest products
+  const { data: latestProducts, isLoading: isLoadingLatest } = useQuery({
+    queryKey: ['homeLatestProducts'],
     queryFn: () => getProducts({
-      limit: 4,
-      sort: 'newest'
-    }),
+      sort: 'newest',
+      limit: 4
+    })
   });
-
+  
   // Fetch popular products
-  const { data: popularProducts } = useQuery({
-    queryKey: ['popularProducts'],
+  const { data: popularProducts, isLoading: isLoadingPopular } = useQuery({
+    queryKey: ['homePopularProducts'],
     queryFn: () => getProducts({
-      limit: 4,
-      sort: 'popularity'
-    }),
+      sort: 'popularity',
+      limit: 4
+    })
   });
   
   return (
-    <div className="min-h-screen flex flex-col" data-page="home">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-primary/10 to-primary/5 py-16 md:py-24">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight">
-            Professional Digital Products <br className="hidden md:block" />
-            <span className="text-primary">for Creators</span>
+      <section className="relative bg-gradient-to-br from-primary to-primary-foreground overflow-hidden py-20">
+        <div className="container mx-auto px-4 relative z-10 flex flex-col items-center text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight">
+            Premium Digital Products Marketplace
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mx-auto max-w-2xl mb-8">
-            High-quality WordPress and XenForo themes, plugins, and extensions to elevate your online presence.
+          <p className="text-xl text-white/90 max-w-3xl mb-8">
+            Discover high-quality WordPress and XenForo plugins, themes, and extensions for your next project.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Button 
               size="lg" 
-              className="px-8" 
-              onClick={() => navigate('/') } 
-              data-event="browse-products-click"
+              onClick={() => navigate('/products')}
+              className="bg-white text-primary hover:bg-white/90"
+              data-event="hero-browse-products"
             >
               Browse Products
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
             <Button 
+              size="lg" 
               variant="outline" 
-              size="lg"
-              onClick={() => navigate('/auth')} 
-              data-event="join-marketplace-click"
+              onClick={() => navigate('/auth')}
+              className="bg-transparent border-white text-white hover:bg-white/10"
+              data-event="hero-sign-up"
             >
-              Join Our Marketplace
+              Sign Up
             </Button>
           </div>
-        </div>
-      </section>
-      
-      {/* Features Section */}
-      <section className="py-16 bg-background" data-section="features">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Us</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-card p-6 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Premium Quality</h3>
-              <p className="text-muted-foreground">
-                All our products pass through rigorous quality checks to ensure the best user experience.
-              </p>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12 w-full max-w-4xl">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">100+</p>
+              <p className="text-white/80">Products</p>
             </div>
-            
-            <div className="bg-card p-6 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Download className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Lifetime Updates</h3>
-              <p className="text-muted-foreground">
-                Purchase once and receive lifetime updates with new features and security patches.
-              </p>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">10k+</p>
+              <p className="text-white/80">Downloads</p>
             </div>
-            
-            <div className="bg-card p-6 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <HelpCircle className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Dedicated Support</h3>
-              <p className="text-muted-foreground">
-                Our support team is always ready to help you with any questions or issues.
-              </p>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">4.8</p>
+              <p className="text-white/80">Average Rating</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">24/7</p>
+              <p className="text-white/80">Support</p>
             </div>
           </div>
         </div>
+        
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden">
+          <svg className="absolute bottom-0 left-0 transform translate-x-1/2" width="300" height="300" fill="none">
+            <circle cx="150" cy="150" r="150" fill="white" fillOpacity="0.05" />
+          </svg>
+          <svg className="absolute top-0 right-0 transform -translate-x-1/2" width="400" height="400" fill="none">
+            <circle cx="200" cy="200" r="200" fill="white" fillOpacity="0.03" />
+          </svg>
+        </div>
       </section>
       
-      {/* New Releases Section */}
-      <section className="py-16 bg-muted/30" data-section="new-releases">
+      {/* Featured Products Section */}
+      <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold">New Releases</h2>
+            <h2 className="text-2xl md:text-3xl font-bold">Latest Releases</h2>
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/?sort=newest')}
-              data-event="view-all-new-click"
+              onClick={() => navigate('/products?sort=newest')}
+              data-event="view-all-latest"
             >
-              View All <ArrowRight className="ml-2 h-4 w-4" />
+              View All <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts?.data.map((product: Product) => (
-              <ProductCard 
-                key={product.id} 
-                id={product.id}
-                title={product.title}
-                image={product.image || `https://picsum.photos/seed/${product.id}/600/400`}
-                price={product.price}
-                rating={product.rating || 0}
-                platform={product.platform}
-                category={product.category}
-                author={product.author}
-                sales={product.download_count}
-              />
-            ))}
-            
-            {!featuredProducts?.data.length && (
-              <div className="col-span-4 text-center py-12">
-                <p className="text-muted-foreground">No products found. Check back soon for new releases!</p>
-              </div>
-            )}
-          </div>
+          {isLoadingLatest ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : latestProducts?.data && latestProducts.data.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {latestProducts.data.map(product => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  title={product.title}
+                  image={product.image || `https://picsum.photos/seed/${product.id}/600/400`}
+                  price={product.price}
+                  rating={product.rating || 0}
+                  platform={product.platform}
+                  category={product.category}
+                  author={product.author}
+                  sales={product.download_count}
+                  version={product.version}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No products found</p>
+            </div>
+          )}
         </div>
       </section>
       
       {/* Popular Products Section */}
-      <section className="py-16 bg-background" data-section="popular-products">
+      <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold">Popular Products</h2>
+            <h2 className="text-2xl md:text-3xl font-bold">Most Popular</h2>
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/?sort=popularity')}
-              data-event="view-all-popular-click"
+              onClick={() => navigate('/products?sort=popularity')}
+              data-event="view-all-popular"
             >
-              View All <ArrowRight className="ml-2 h-4 w-4" />
+              View All <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {popularProducts?.data.map((product: Product) => (
-              <ProductCard 
-                key={product.id} 
-                id={product.id}
-                title={product.title}
-                image={product.image || `https://picsum.photos/seed/${product.id}/600/400`}
-                price={product.price}
-                rating={product.rating || 0}
-                platform={product.platform}
-                category={product.category}
-                author={product.author}
-                sales={product.download_count}
-              />
-            ))}
-            
-            {!popularProducts?.data.length && (
-              <div className="col-span-4 text-center py-12">
-                <p className="text-muted-foreground">No products found. Check back soon for popular items!</p>
+          {isLoadingPopular ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : popularProducts?.data && popularProducts.data.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {popularProducts.data.map(product => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  title={product.title}
+                  image={product.image || `https://picsum.photos/seed/${product.id}/600/400`}
+                  price={product.price}
+                  rating={product.rating || 0}
+                  platform={product.platform}
+                  category={product.category}
+                  author={product.author}
+                  sales={product.download_count}
+                  version={product.version}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No products found</p>
+            </div>
+          )}
+        </div>
+      </section>
+      
+      {/* Features Section */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h2 className="text-3xl font-bold mb-4">Why Choose Our Marketplace?</h2>
+            <p className="text-lg text-muted-foreground">
+              We provide high-quality, well-supported digital products for your websites and forums
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-card p-6 rounded-lg border shadow-sm">
+              <div className="w-12 h-12 mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <Star className="h-6 w-6 text-primary" />
               </div>
-            )}
+              <h3 className="text-xl font-semibold mb-3">Premium Quality</h3>
+              <p className="text-muted-foreground">
+                All products are carefully reviewed for quality and performance before being listed in our marketplace.
+              </p>
+            </div>
+            
+            <div className="bg-card p-6 rounded-lg border shadow-sm">
+              <div className="w-12 h-12 mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <Download className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Instant Downloads</h3>
+              <p className="text-muted-foreground">
+                Get immediate access to your purchases with our instant download system, no waiting required.
+              </p>
+            </div>
+            
+            <div className="bg-card p-6 rounded-lg border shadow-sm">
+              <div className="w-12 h-12 mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Dedicated Support</h3>
+              <p className="text-muted-foreground">
+                Our vendors provide dedicated support through our forums, ensuring you get help when you need it.
+              </p>
+            </div>
           </div>
         </div>
       </section>
       
-      {/* Support Section */}
-      <section className="py-16 bg-primary/5" data-section="support">
+      {/* CTA Section */}
+      <section className="py-16 bg-primary">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">Need Help?</h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Our support team is ready to assist you with any questions about our products or services.
+          <h2 className="text-3xl font-bold text-white mb-6">Ready to find your perfect digital product?</h2>
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+            Browse our collection of premium WordPress and XenForo products to enhance your website or forum.
           </p>
-          <Button 
-            size="lg" 
-            variant="default" 
-            onClick={() => window.open('https://support.example.com', '_blank')}
-            data-event="visit-forum-click"
-          >
-            Visit Support Forum
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              onClick={() => navigate('/products')}
+              className="bg-white text-primary hover:bg-white/90"
+              data-event="cta-browse-products"
+            >
+              Browse Products
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              onClick={() => window.open('https://support.example.com/forum', '_blank')}
+              className="border-white text-white hover:bg-white/10"
+              data-event="cta-visit-forum"
+            >
+              Visit Support Forum
+            </Button>
+          </div>
         </div>
       </section>
       
       {/* Footer */}
-      <footer className="bg-muted py-12 mt-auto" data-section="footer">
+      <footer className="bg-muted py-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-bold text-lg mb-4">DigiMarket</h3>
-              <p className="text-muted-foreground">
-                Premium digital products for WordPress and XenForo platforms.
+              <h3 className="font-bold mb-4">MarketPlace</h3>
+              <p className="text-sm text-muted-foreground">
+                Your source for premium digital products for WordPress and XenForo platforms.
               </p>
             </div>
             
             <div>
-              <h3 className="font-bold text-lg mb-4">Products</h3>
-              <ul className="space-y-2">
-                <li><a href="/?platform=WordPress" className="text-muted-foreground hover:text-primary">WordPress</a></li>
-                <li><a href="/?platform=XenForo" className="text-muted-foreground hover:text-primary">XenForo</a></li>
-                <li><a href="/?category=Plugins" className="text-muted-foreground hover:text-primary">Plugins</a></li>
-                <li><a href="/?category=Themes" className="text-muted-foreground hover:text-primary">Themes</a></li>
+              <h3 className="font-bold mb-4">Products</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/products?platform=WordPress" className="text-muted-foreground hover:text-foreground">WordPress Plugins</a></li>
+                <li><a href="/products?platform=WordPress&category=Themes" className="text-muted-foreground hover:text-foreground">WordPress Themes</a></li>
+                <li><a href="/products?platform=XenForo" className="text-muted-foreground hover:text-foreground">XenForo Addons</a></li>
+                <li><a href="/products?platform=XenForo&category=Themes" className="text-muted-foreground hover:text-foreground">XenForo Themes</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-bold text-lg mb-4">Company</h3>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-muted-foreground hover:text-primary">About Us</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary">Contact</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary">Privacy Policy</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary">Terms of Service</a></li>
+              <h3 className="font-bold mb-4">Support</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="https://support.example.com/forum" className="text-muted-foreground hover:text-foreground">Support Forum</a></li>
+                <li><a href="/faq" className="text-muted-foreground hover:text-foreground">FAQs</a></li>
+                <li><a href="/contact" className="text-muted-foreground hover:text-foreground">Contact Us</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-bold text-lg mb-4">Support</h3>
-              <ul className="space-y-2">
-                <li><a href="https://support.example.com" target="_blank" className="text-muted-foreground hover:text-primary">Support Forum</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary">Documentation</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary">FAQs</a></li>
+              <h3 className="font-bold mb-4">Legal</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/terms" className="text-muted-foreground hover:text-foreground">Terms of Service</a></li>
+                <li><a href="/privacy" className="text-muted-foreground hover:text-foreground">Privacy Policy</a></li>
+                <li><a href="/refunds" className="text-muted-foreground hover:text-foreground">Refund Policy</a></li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} DigiMarket. All rights reserved.</p>
+          <div className="border-t mt-8 pt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} MarketPlace. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

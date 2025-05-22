@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,12 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Product } from '@/lib/types';
-import { createProduct, updateProduct } from '@/lib/api';
-import { useMutation } from '@tanstack/react-query';
+import { createProduct, updateProduct, uploadProductFile, addProductVersion } from '@/lib/api';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { X, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductFormProps {
   initialData?: Product;
@@ -32,14 +33,45 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
     description: '',
     price: 0,
     image: '',
-    platform: 'WordPress',
-    category: 'Plugins',
+    platform: '',
+    category: '',
     tags: [],
     author: '',
     version: '1.0.0',
   });
   
   const [tagInput, setTagInput] = useState('');
+  const [productFile, setProductFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get platforms and categories from the database
+  const { data: platforms } = useQuery({
+    queryKey: ['platforms'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('platform')
+        .order('platform', { ascending: true });
+      
+      // Get unique platforms
+      return Array.from(new Set(data?.map(item => item.platform).filter(Boolean))) as string[];
+    }
+  });
+  
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('category')
+        .order('category', { ascending: true });
+      
+      // Get unique categories
+      return Array.from(new Set(data?.map(item => item.category).filter(Boolean))) as string[];
+    }
+  });
   
   useEffect(() => {
     if (initialData) {
@@ -58,11 +90,42 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
   
   const mutation = useMutation({
     mutationFn: async () => {
+      let result;
+      
+      // First create or update the product
       if (isEditing && initialData) {
-        return updateProduct(initialData.id, formData as Product);
+        result = await updateProduct(initialData.id, formData as Product);
       } else {
-        return createProduct(formData as Product);
+        result = await createProduct(formData as Product);
       }
+      
+      // If we have a file and this is a new product or we're updating with a file
+      if (productFile && result) {
+        setIsUploading(true);
+        
+        try {
+          // Create a new version
+          const versionData = await addProductVersion({
+            product_id: result.id,
+            version: formData.version || '1.0.0',
+            date: new Date().toISOString(),
+            changes: ['Initial release']
+          });
+          
+          // Upload the file
+          if (versionData) {
+            await uploadProductFile(versionData.id, productFile);
+          }
+          
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          toast.error('Product saved but file upload failed');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+      
+      return result;
     },
     onSuccess: () => {
       toast.success(isEditing ? 'Product updated successfully' : 'Product created successfully');
@@ -108,8 +171,31 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
     }));
   };
   
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProductFile(e.target.files[0]);
+    }
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!formData.title?.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    
+    if (!formData.platform?.trim()) {
+      toast.error('Platform is required');
+      return;
+    }
+    
+    if (!formData.category?.trim()) {
+      toast.error('Category is required');
+      return;
+    }
+    
     mutation.mutate();
   };
   
@@ -120,7 +206,7 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input
@@ -154,10 +240,28 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
                   <SelectValue placeholder="Select platform" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="WordPress">WordPress</SelectItem>
-                  <SelectItem value="XenForo">XenForo</SelectItem>
+                  {platforms && platforms.length > 0 ? (
+                    platforms.map(platform => (
+                      <SelectItem key={platform} value={platform}>{platform}</SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="WordPress">WordPress</SelectItem>
+                      <SelectItem value="XenForo">XenForo</SelectItem>
+                      <SelectItem value="Custom">Custom</SelectItem>
+                    </>
+                  )}
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.platform === 'Other' && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter custom platform"
+                  value={formData.platform === 'Other' ? '' : formData.platform}
+                  onChange={(e) => handleSelectChange('platform', e.target.value)}
+                />
+              )}
             </div>
             
             <div className="space-y-2">
@@ -170,11 +274,28 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Plugins">Plugins</SelectItem>
-                  <SelectItem value="Themes">Themes</SelectItem>
-                  <SelectItem value="Extensions">Extensions</SelectItem>
+                  {categories && categories.length > 0 ? (
+                    categories.map(category => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="Plugins">Plugins</SelectItem>
+                      <SelectItem value="Themes">Themes</SelectItem>
+                      <SelectItem value="Extensions">Extensions</SelectItem>
+                    </>
+                  )}
+                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.category === 'Other' && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter custom category"
+                  value={formData.category === 'Other' ? '' : formData.category}
+                  onChange={(e) => handleSelectChange('category', e.target.value)}
+                />
+              )}
             </div>
             
             <div className="space-y-2">
@@ -212,6 +333,50 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
                 onChange={handleChange}
                 placeholder="https://example.com/image.jpg"
               />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="file">Product File</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  ref={fileInputRef}
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {productFile ? 'Change File' : 'Upload File'}
+                </Button>
+              </div>
+              {productFile && (
+                <div className="text-sm mt-1 flex items-center justify-between border p-2 rounded">
+                  <span className="truncate">{productFile.name}</span>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    onClick={() => setProductFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {isUploading && (
+                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                  <div 
+                    className="bg-primary h-2.5 rounded-full" 
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -266,10 +431,15 @@ const ProductForm = ({ initialData, onSuccess, onCancel }: ProductFormProps) => 
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending
-              ? (isEditing ? 'Updating...' : 'Creating...')
-              : (isEditing ? 'Update Product' : 'Create Product')}
+          <Button type="submit" disabled={mutation.isPending || isUploading}>
+            {mutation.isPending || isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEditing ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              isEditing ? 'Update Product' : 'Create Product'
+            )}
           </Button>
         </CardFooter>
       </form>

@@ -62,21 +62,40 @@ const GoogleAnalytics = () => {
         const eventName = element.getAttribute('data-event');
         const category = element.getAttribute('data-event-category') || 'User Interaction';
         const label = element.getAttribute('data-event-label') || element.textContent;
+        const productId = element.getAttribute('data-product-id');
         
         if (eventName) {
           element.addEventListener('click', () => {
-            trackEvent({
+            const eventObject: AnalyticsEvent = {
               name: eventName,
               category,
-              label: label || undefined
-            });
+              label: label || undefined,
+            };
+            
+            // Add product ID if available
+            if (productId) {
+              eventObject.label = `${eventObject.label || ''} (${productId})`;
+            }
+            
+            trackEvent(eventObject);
           });
         }
       });
     };
 
+    // Function to track e-commerce events
+    const trackEcommerceEvent = (action: string, items: any[]) => {
+      if (window.gtag) {
+        window.gtag('event', action, {
+          items: items
+        });
+        console.log(`Tracked ecommerce event: ${action}`);
+      }
+    };
+
     // Expose tracking functions to the window for use in other components
     window.trackAnalyticsEvent = trackEvent;
+    window.trackEcommerceEvent = trackEcommerceEvent;
 
     // Track page view when location changes
     trackPageView(location.pathname + location.search);
@@ -103,6 +122,7 @@ declare global {
     ) => void;
     dataLayer: any[];
     trackAnalyticsEvent: (event: AnalyticsEvent) => void;
+    trackEcommerceEvent: (action: string, items: any[]) => void;
   }
 }
 

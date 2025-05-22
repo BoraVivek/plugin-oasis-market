@@ -8,7 +8,7 @@ import ProductDownloadSection from "@/components/ProductDownloadSection";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ChevronRight, FileText, Loader2 } from "lucide-react";
-import { getProductById, getProductVersions, getProductReviews } from '@/lib/api';
+import { getProductById, getProductVersions, getProductReviews, hasUserPurchasedProduct } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 
 const ProductDetails = () => {
@@ -40,6 +40,16 @@ const ProductDetails = () => {
   } = useQuery({
     queryKey: ['productReviews', productId],
     queryFn: () => getProductReviews(productId!),
+    enabled: !!productId
+  });
+
+  // Check if the user has purchased this product
+  const {
+    data: hasPurchased,
+    isLoading: isPurchaseCheckLoading
+  } = useQuery({
+    queryKey: ['userPurchased', productId],
+    queryFn: () => hasUserPurchasedProduct(productId!),
     enabled: !!productId
   });
 
@@ -135,7 +145,7 @@ const ProductDetails = () => {
             )}
             
             {/* Download section for purchased products */}
-            {!isLoadingVersions && versions && (
+            {!isLoadingVersions && versions && hasPurchased && (
               <ProductDownloadSection productId={product.id} versions={versions} />
             )}
             
@@ -144,6 +154,7 @@ const ProductDetails = () => {
               versions={versions || []}
               reviews={reviews || []}
               discussionUrl="https://support.example.com/forum"
+              productId={product.id}
             />
           </div>
           
@@ -160,6 +171,8 @@ const ProductDetails = () => {
                 lastUpdate={product.last_update || ''}
                 tags={product.tags || []}
                 productId={product.id}
+                hasPurchased={hasPurchased}
+                isPurchaseCheckLoading={isPurchaseCheckLoading}
               />
             </div>
           </div>

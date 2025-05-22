@@ -15,7 +15,7 @@ export interface Product {
   description?: string;
   price: number;
   image?: string;
-  platform: 'WordPress' | 'XenForo';
+  platform: 'WordPress' | 'XenForo' | string;
   category: string;
   tags?: string[];
   author: string;
@@ -50,6 +50,7 @@ export interface Review {
   rating: number;
   content?: string;
   date: string;
+  status?: 'pending' | 'approved' | 'rejected'; // Added for review moderation
 }
 
 export interface CartItem {
@@ -102,4 +103,18 @@ export interface AnalyticsEvent {
   label?: string;
   value?: number;
   nonInteraction?: boolean;
+}
+
+export interface NavItem {
+  id: string;
+  label: string;
+  href: string;
+  position: number;
+  type: string;
+}
+
+export interface ConfigItem {
+  id: string;
+  name: string;
+  value: string;
 }

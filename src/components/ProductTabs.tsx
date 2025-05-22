@@ -1,141 +1,307 @@
 
-import React from 'react';
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
-} from "@/components/ui/accordion";
-import { Star } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ProductVersion, Review } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/utils";
+import { ProductVersion, Review } from "@/lib/types";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Star } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductTabsProps {
   description: string;
   versions: ProductVersion[];
   reviews: Review[];
   discussionUrl?: string;
+  productId: string;
 }
 
-const ProductTabs = ({
-  description,
-  versions,
-  reviews,
-  discussionUrl
+const ProductTabs = ({ 
+  description, 
+  versions, 
+  reviews, 
+  discussionUrl = "#",
+  productId 
 }: ProductTabsProps) => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("description");
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const queryClient = useQueryClient();
+
+  const reviewMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("You must be logged in to submit a review");
+      
+      const { data, error } = await supabase
+        .from("reviews")
+        .insert({
+          product_id: productId,
+          user_id: user.id,
+          rating: reviewRating,
+          content: reviewText,
+          date: new Date().toISOString()
+        });
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Review submitted for moderation");
+      setReviewText("");
+      setReviewRating(5);
+      queryClient.invalidateQueries({ queryKey: ['productReviews', productId] });
+    },
+    onError: (error: any) => {
+      toast.error(`Error submitting review: ${error.message}`);
+    }
+  });
+
+  const handleSubmitReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    reviewMutation.mutate();
+  };
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Star 
+          key={i}
+          className={`h-4 w-4 ${i <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
+        />
+      );
+    }
+    return <div className="flex">{stars}</div>;
+  };
+
+  const handleRatingClick = (rating: number) => {
+    setReviewRating(rating);
+  };
+
+  const renderRatingInput = () => {
+    return (
+      <div className="flex space-x-1">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onClick={() => handleRatingClick(rating)}
+            onMouseEnter={() => setHoverRating(rating)}
+            onMouseLeave={() => setHoverRating(0)}
+            className="focus:outline-none"
+          >
+            <Star
+              className={`h-5 w-5 ${
+                (hoverRating ? rating <= hoverRating : rating <= reviewRating)
+                  ? "text-yellow-400 fill-yellow-400"
+                  : "text-gray-300"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="description">
-        <AccordionTrigger className="text-lg">Description</AccordionTrigger>
-        <AccordionContent>
-          {description ? (
-            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: description }} />
-          ) : (
-            <p className="text-muted-foreground">No description provided.</p>
-          )}
-        </AccordionContent>
-      </AccordionItem>
+    <Tabs defaultValue="description" value={activeTab} onValueChange={setActiveTab}>
+      <TabsList className="grid grid-cols-4 w-full">
+        <TabsTrigger value="description">Description</TabsTrigger>
+        <TabsTrigger value="versions">Versions</TabsTrigger>
+        <TabsTrigger value="reviews">Reviews</TabsTrigger>
+        <TabsTrigger value="discussion">Discussion</TabsTrigger>
+      </TabsList>
       
-      <AccordionItem value="versions">
-        <AccordionTrigger className="text-lg">Version History</AccordionTrigger>
-        <AccordionContent>
-          {versions && versions.length > 0 ? (
-            <div className="space-y-6">
-              {versions.map((version, index) => (
-                <div key={version.id} className="border-b border-border pb-4 last:border-0">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-md font-semibold">Version {version.version}</h3>
-                    <span className="text-sm text-muted-foreground">
-                      {version.date ? formatDate(version.date) : 'Unknown date'}
-                    </span>
+      <TabsContent value="description">
+        <Card>
+          <CardHeader>
+            <CardTitle>Product Description</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {description ? (
+              <div className="prose max-w-none">
+                {/* This would ideally be processed through a markdown renderer */}
+                <div dangerouslySetInnerHTML={{ __html: description }} />
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No description available for this product.</p>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="versions">
+        <Card>
+          <CardHeader>
+            <CardTitle>Version History</CardTitle>
+            <CardDescription>
+              Release notes and changes for each version
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {versions && versions.length > 0 ? (
+              <div className="space-y-6">
+                {versions
+                  .sort((a, b) => 
+                    new Date(b.date || "").getTime() - new Date(a.date || "").getTime()
+                  )
+                  .map((version) => (
+                    <div key={version.id} className="border-b pb-4 last:border-b-0">
+                      <div className="flex justify-between items-baseline mb-2">
+                        <h3 className="font-semibold flex items-center">
+                          <Badge variant="outline" className="mr-2">v{version.version}</Badge>
+                          {version === versions[0] && (
+                            <Badge variant="secondary" className="ml-2">Latest</Badge>
+                          )}
+                        </h3>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDate(version.date || "")}
+                        </span>
+                      </div>
+                      
+                      {version.changes && version.changes.length > 0 ? (
+                        <ul className="space-y-1 text-sm">
+                          {version.changes.map((change, index) => (
+                            <li key={index}>{change}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No change notes provided.</p>
+                      )}
+                    </div>
+                  ))
+                }
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No version history available.</p>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="reviews">
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer Reviews</CardTitle>
+            <CardDescription>
+              Feedback from users who have purchased this product
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Review submission form */}
+            {user && (
+              <div className="mb-8 border-b pb-6">
+                <h3 className="font-medium mb-3">Write a Review</h3>
+                <form onSubmit={handleSubmitReview}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Your Rating</Label>
+                      {renderRatingInput()}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="review">Your Review</Label>
+                      <Textarea
+                        id="review"
+                        placeholder="Share your experience with this product..."
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        rows={4}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      Your review will be submitted for moderation before it appears publicly.
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      disabled={reviewMutation.isPending}
+                      data-event="submit-product-review"
+                    >
+                      {reviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                    </Button>
                   </div>
-                  {version.changes && version.changes.length > 0 ? (
-                    <ul className="list-disc pl-5 space-y-1">
-                      {version.changes.map((change, idx) => (
-                        <li key={idx} className="text-sm">{change}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No changes listed for this version.</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No version history available.</p>
-          )}
-        </AccordionContent>
-      </AccordionItem>
-      
-      <AccordionItem value="reviews">
-        <AccordionTrigger className="text-lg">Ratings & Reviews</AccordionTrigger>
-        <AccordionContent>
-          {reviews && reviews.length > 0 ? (
-            <div className="space-y-6">
-              {reviews.map((review) => (
-                <div key={review.id} className="border-b border-border pb-4 last:border-0">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center space-x-3">
+                </form>
+              </div>
+            )}
+            
+            {/* Reviews list */}
+            {reviews && reviews.length > 0 ? (
+              <div className="space-y-6">
+                {reviews.map((review) => (
+                  <div key={review.id} className="border-b pb-4 last:border-b-0">
+                    <div className="flex items-start gap-4">
                       <Avatar>
                         <AvatarImage src={review.avatar} alt={review.author} />
                         <AvatarFallback>
-                          {review.author ? review.author.substring(0, 2).toUpperCase() : 'UN'}
+                          {review.author?.[0] || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="font-medium">{review.author || 'Anonymous'}</div>
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-3.5 w-3.5 ${
-                                i < review.rating 
-                                  ? "text-amber-400 fill-amber-400" 
-                                  : "text-gray-300 fill-gray-300"
-                              }`}
-                            />
-                          ))}
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{review.author || "Anonymous"}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(review.date)}
+                          </span>
                         </div>
+                        
+                        <div className="flex items-center">
+                          {renderStars(review.rating)}
+                        </div>
+                        
+                        {review.content && (
+                          <p className="text-sm mt-1">{review.content}</p>
+                        )}
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(review.date)}
-                    </span>
                   </div>
-                  {review.content ? (
-                    <p className="mt-2 text-sm">{review.content}</p>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">No written review.</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground py-4">No reviews yet. Be the first to review this product!</p>
-          )}
-        </AccordionContent>
-      </AccordionItem>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No reviews yet. Be the first to share your experience!
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
       
-      {discussionUrl && (
-        <AccordionItem value="discussion">
-          <AccordionTrigger className="text-lg">Discussion</AccordionTrigger>
-          <AccordionContent>
-            <div className="text-center py-4">
-              <p className="mb-4">Join the discussion about this product on our forums</p>
-              <a
-                href={discussionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:text-primary/80 font-medium"
+      <TabsContent value="discussion">
+        <Card>
+          <CardHeader>
+            <CardTitle>Community Discussion</CardTitle>
+            <CardDescription>
+              Join the conversation about this product
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">
+                Visit our community forums to join discussions about this product.
+              </p>
+              <Button 
+                onClick={() => window.open(discussionUrl, "_blank")}
+                data-event="product-forum-click"
               >
-                Visit Discussion Forum
-              </a>
+                Go to Forums
+              </Button>
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      )}
-    </Accordion>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 };
 

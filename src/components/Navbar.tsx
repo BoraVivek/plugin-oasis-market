@@ -1,331 +1,294 @@
 
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Search, Menu, ShoppingCart, Heart, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Menu,
-  X,
-  ShoppingCart,
-  Heart,
-  LogIn,
-  LogOut,
-  User,
-  Package,
-  Settings,
-  ListOrderedIcon,
-  LayoutDashboard,
-  HelpCircle,
-  Home,
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
+import { supabase } from "@/integrations/supabase/client";
+
+interface NavItem {
+  id: string;
+  label: string;
+  href: string;
+  position: number;
+}
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const { user, signOut } = useAuth();
-  const { totalItems } = useCart();
+  const { totalItems: cartItems } = useCart();
+  const { totalItems: wishlistItems } = useWishlist();
   const navigate = useNavigate();
-
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
+  // Fetch nav items from Supabase
+  const { data: navItems = [] } = useQuery({
+    queryKey: ['navItems'],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from('nav_items')
+          .select('*')
+          .eq('type', 'main')
+          .order('position', { ascending: true });
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error loading nav items:', error);
+        return [];
+      }
+    }
+  });
+  
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
-    setSearchQuery('');
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setIsSearchOpen(false);
+    }
   };
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+  
+  const handleSearchToggle = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      setTimeout(() => {
+        document.getElementById("search-input")?.focus();
+      }, 100);
+    }
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-      <div className="container flex h-16 items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="font-bold text-xl md:text-2xl text-primary">
-            DigiMarket
-          </Link>
+    <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="container flex h-16 items-center">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="md:hidden" data-event="mobile-menu-open">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left">
+            <SheetHeader className="mb-6">
+              <SheetTitle>Menu</SheetTitle>
+            </SheetHeader>
+            <nav className="grid gap-4">
+              {navItems.map((item: NavItem) => (
+                <Link 
+                  key={item.id}
+                  to={item.href}
+                  className="flex items-center py-2 text-lg"
+                  data-event="mobile-nav-item-click"
+                  data-event-label={item.label}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-sm font-medium transition-colors hover:text-primary">
-              <Home className="h-4 w-4 inline mr-1" />
-              Home
-            </Link>
-            <Link to="/products" className="text-sm font-medium transition-colors hover:text-primary">
-              All Products
-            </Link>
-            <Link to="/products?platform=WordPress" className="text-sm font-medium transition-colors hover:text-primary">
-              WordPress
-            </Link>
-            <Link to="/products?platform=XenForo" className="text-sm font-medium transition-colors hover:text-primary">
-              XenForo
-            </Link>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="text-sm font-medium">
-                  Categories
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem asChild>
-                  <Link to="/products?category=Plugins" className="w-full cursor-pointer">Plugins</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/products?category=Themes" className="w-full cursor-pointer">Themes</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/products?category=Extensions" className="w-full cursor-pointer">Extensions</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        {/* Logo */}
+        <Link 
+          to="/" 
+          className="flex items-center space-x-2 mr-6"
+          data-event="logo-click"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-6 w-6"
+          >
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+          <span className="font-bold text-xl hidden sm:inline-block">MarketPlace</span>
+        </Link>
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center space-x-6 flex-1">
+          {navItems.map((item: NavItem) => (
             <Link 
-              to="#" 
-              onClick={() => window.open('https://support.example.com', '_blank')}
-              className="text-sm font-medium transition-colors hover:text-primary flex items-center"
-              data-event="navbar-support-click"
+              key={item.id}
+              to={item.href}
+              className="text-sm font-medium transition-colors hover:text-primary"
+              data-event="desktop-nav-item-click"
+              data-event-label={item.label}
             >
-              <HelpCircle className="h-4 w-4 mr-1" />
-              Support
+              {item.label}
             </Link>
-          </nav>
-        </div>
+          ))}
+        </nav>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="hidden md:flex w-full max-w-md mx-4">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search products..."
-              className="w-full pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </form>
+        {/* Search & Actions */}
+        <div className="flex items-center space-x-2 ml-auto">
+          {/* Search Bar */}
+          {isSearchOpen ? (
+            <form onSubmit={handleSearch} className="relative flex-1 max-w-sm">
+              <Input
+                id="search-input"
+                type="search"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pr-10"
+              />
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full"
+                data-event="search-submit-button-click"
+              >
+                <Search className="h-4 w-4" />
+                <span className="sr-only">Search</span>
+              </Button>
+            </form>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSearchToggle}
+              data-event="search-toggle-button-click"
+            >
+              <Search className="h-5 w-5" />
+              <span className="sr-only">Search</span>
+            </Button>
+          )}
 
-        {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-2">
-          <Link to="/cart">
-            <Button variant="ghost" size="icon" className="relative" data-event="navbar-cart-click">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center">
-                  {totalItems}
+          {/* Wishlist */}
+          <Link to="/wishlist">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              data-event="wishlist-button-click"
+            >
+              <Heart className="h-5 w-5" />
+              {wishlistItems > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {wishlistItems}
                 </Badge>
               )}
-            </Button>
-          </Link>
-          
-          <Link to="/wishlist">
-            <Button variant="ghost" size="icon" data-event="navbar-wishlist-click">
-              <Heart className="h-5 w-5" />
+              <span className="sr-only">Wishlist</span>
             </Button>
           </Link>
 
+          {/* Cart */}
+          <Link to="/cart">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              data-event="cart-button-click"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartItems > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {cartItems}
+                </Badge>
+              )}
+              <span className="sr-only">Cart</span>
+            </Button>
+          </Link>
+
+          {/* User Menu */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url} alt={user.first_name || user.email} />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full" 
+                  aria-label="User menu"
+                  data-event="user-menu-button-click"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={user.avatar_url || ""} />
                     <AvatarFallback>
-                      {(user.first_name?.charAt(0) || user.email.charAt(0)).toUpperCase()}
+                      {user.first_name?.[0] || user.email[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-4 py-2">
+                  <p className="text-sm font-medium">
+                    {user.first_name ? `${user.first_name} ${user.last_name || ""}` : user.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">{user.email}</p>
+                </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex w-full cursor-pointer" data-event="navbar-profile-click">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
+                <DropdownMenuItem 
+                  onClick={() => navigate("/profile")}
+                  data-event="user-menu-profile-click"
+                >
+                  Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/orders" className="flex w-full cursor-pointer" data-event="navbar-orders-click">
-                    <Package className="mr-2 h-4 w-4" />
-                    Orders
-                  </Link>
+                <DropdownMenuItem 
+                  onClick={() => navigate("/orders")}
+                  data-event="user-menu-orders-click"
+                >
+                  Orders
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/wishlist" className="flex w-full cursor-pointer" data-event="navbar-wishlist-dropdown-click">
-                    <Heart className="mr-2 h-4 w-4" />
-                    Wishlist
-                  </Link>
-                </DropdownMenuItem>
-                {user.role === 'admin' && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="flex w-full cursor-pointer" data-event="navbar-dashboard-click">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
+                {(user.role === "admin" || user.role === "vendor") && (
+                  <DropdownMenuItem 
+                    onClick={() => navigate("/dashboard")}
+                    data-event="user-menu-dashboard-click"
+                  >
+                    Dashboard
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" data-event="navbar-logout-click">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                <DropdownMenuItem 
+                  onClick={() => signOut()}
+                  data-event="user-menu-signout-click"
+                >
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link to="/auth">
-              <Button variant="default" size="sm" className="gap-1" data-event="navbar-signin-click">
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        {/* Mobile Menu Trigger */}
-        <div className="flex items-center md:hidden">
-          <Link to="/cart" className="mr-2">
-            <Button variant="ghost" size="icon" className="relative" data-event="navbar-mobile-cart-click">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center">
-                  {totalItems}
-                </Badge>
-              )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate("/auth")}
+              data-event="signin-button-click"
+            >
+              <User className="h-5 w-5" />
+              <span className="sr-only">Sign In</span>
             </Button>
-          </Link>
-
-          <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" data-event="navbar-mobile-menu-click">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="py-4">
-                <form onSubmit={handleSearch} className="relative mb-6">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search products..."
-                    className="w-full pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </form>
-                
-                <div className="flex flex-col">
-                  <SheetClose asChild>
-                    <Link to="/" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-home-click">
-                      <Home className="h-4 w-4 mr-2" />
-                      Home
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link to="/products" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-products-click">
-                      All Products
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link to="/products?platform=WordPress" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-wordpress-click">
-                      WordPress
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link to="/products?platform=XenForo" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-xenforo-click">
-                      XenForo
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link to="/wishlist" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-wishlist-click">
-                      <Heart className="mr-2 h-4 w-4" />
-                      Wishlist
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link 
-                      to="#" 
-                      onClick={() => window.open('https://support.example.com', '_blank')}
-                      className="flex items-center py-3 px-4 rounded-md hover:bg-accent"
-                      data-event="navbar-mobile-support-click"
-                    >
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      Support
-                    </Link>
-                  </SheetClose>
-                  
-                  {user ? (
-                    <>
-                      <SheetClose asChild>
-                        <Link to="/profile" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-profile-click">
-                          <User className="mr-2 h-4 w-4" />
-                          Profile
-                        </Link>
-                      </SheetClose>
-                      <SheetClose asChild>
-                        <Link to="/orders" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-orders-click">
-                          <ListOrderedIcon className="mr-2 h-4 w-4" />
-                          Orders
-                        </Link>
-                      </SheetClose>
-                      {user.role === 'admin' && (
-                        <SheetClose asChild>
-                          <Link to="/dashboard" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-dashboard-click">
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            Dashboard
-                          </Link>
-                        </SheetClose>
-                      )}
-                      <SheetClose asChild>
-                        <Button 
-                          variant="ghost" 
-                          className="justify-start px-4"
-                          onClick={handleLogout}
-                          data-event="navbar-mobile-logout-click"
-                        >
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Logout
-                        </Button>
-                      </SheetClose>
-                    </>
-                  ) : (
-                    <SheetClose asChild>
-                      <Link to="/auth" className="flex items-center py-3 px-4 rounded-md hover:bg-accent" data-event="navbar-mobile-signin-click">
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Sign In
-                      </Link>
-                    </SheetClose>
-                  )}
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          )}
         </div>
       </div>
     </header>
