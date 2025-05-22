@@ -54,12 +54,18 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
 
     try {
       await addToWishlist(productId);
+      // Fetch updated wishlist items to ensure we have the correct data
       const data = await getWishlistItems();
       setItems(data);
       toast.success('Product added to wishlist');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add to wishlist:', error);
-      toast.error('Failed to add product to wishlist');
+      // Check if it's a duplicate error
+      if (error.message?.includes('duplicate')) {
+        toast.error('This item is already in your wishlist');
+      } else {
+        toast.error('Failed to add product to wishlist');
+      }
     }
   };
 

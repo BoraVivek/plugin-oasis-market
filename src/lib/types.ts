@@ -25,6 +25,8 @@ export interface Product {
   review_count?: number;
   release_date?: string;
   last_update?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ProductVersion {
@@ -33,6 +35,9 @@ export interface ProductVersion {
   version: string;
   date?: string;
   changes?: string[];
+  file_url?: string;
+  file_size?: number;
+  created_at?: string;
 }
 
 export interface Review {
@@ -89,3 +94,11 @@ export interface FilterOptions {
 }
 
 export type SortOption = 'popularity' | 'newest' | 'price-asc' | 'price-desc';
+
+export interface AnalyticsEvent {
+  name: string;
+  category?: string;
+  label?: string;
+  value?: number;
+  nonInteraction?: boolean;
+}

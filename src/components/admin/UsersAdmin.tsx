@@ -27,11 +27,16 @@ const UsersAdmin = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['adminUsers'],
     queryFn: async () => {
+      // Fetch profiles with user emails directly using a more compatible join approach
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*, auth_user:id(email:auth.users(email), created_at:auth.users(created_at))');
+        .select('*, auth_user:auth.users!id(email, created_at)')
+        .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
       return profiles;
     }
   });
@@ -48,15 +53,15 @@ const UsersAdmin = () => {
   };
 
   const getUserEmail = (user: any) => {
-    if (user.auth_user && user.auth_user[0] && user.auth_user[0].email) {
-      return user.auth_user[0].email;
+    if (user.auth_user && user.auth_user.email) {
+      return user.auth_user.email;
     }
     return 'No email';
   };
 
   const getCreatedAt = (user: any) => {
-    if (user.auth_user && user.auth_user[0] && user.auth_user[0].created_at) {
-      return formatDate(user.auth_user[0].created_at);
+    if (user.auth_user && user.auth_user.created_at) {
+      return formatDate(user.auth_user.created_at);
     }
     return formatDate(user.created_at);
   };

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Navbar from "@/components/Navbar";
 import ProductTabs from "@/components/ProductTabs";
 import ProductSidebar from "@/components/ProductSidebar";
+import ProductDownloadSection from "@/components/ProductDownloadSection";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { ChevronRight, FileText, Loader2 } from "lucide-react";
@@ -60,27 +61,30 @@ const ProductDetails = () => {
         <div className="flex-1 flex flex-col items-center justify-center">
           <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
           <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => navigate('/')}>Return to Home</Button>
+          <Button onClick={() => navigate('/')} data-event="product-not-found-home-click">Return to Home</Button>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-page="product-details">
       <Navbar />
       
       <main className="flex-1 container mx-auto px-4 py-8">
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+              <BreadcrumbLink href="/" data-event="breadcrumb-home-click">Home</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator>
               <ChevronRight className="h-4 w-4" />
             </BreadcrumbSeparator>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/?platform=${product.platform}`}>
+              <BreadcrumbLink 
+                href={`/products?platform=${product.platform}`} 
+                data-event="breadcrumb-platform-click"
+              >
                 {product.platform}
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -88,7 +92,10 @@ const ProductDetails = () => {
               <ChevronRight className="h-4 w-4" />
             </BreadcrumbSeparator>
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/?category=${product.category}`}>
+              <BreadcrumbLink 
+                href={`/products?category=${product.category}`}
+                data-event="breadcrumb-category-click"
+              >
                 {product.category}
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -112,6 +119,7 @@ const ProductDetails = () => {
                 src={product.image || `https://picsum.photos/seed/${product.id}/800/400`} 
                 alt={product.title} 
                 className="w-full h-auto"
+                data-event="product-image-view"
               />
             </div>
             
@@ -126,11 +134,16 @@ const ProductDetails = () => {
               </div>
             )}
             
+            {/* Download section for purchased products */}
+            {!isLoadingVersions && versions && (
+              <ProductDownloadSection productId={product.id} versions={versions} />
+            )}
+            
             <ProductTabs 
               description={product.description || ''}
               versions={versions || []}
               reviews={reviews || []}
-              discussionUrl={undefined}
+              discussionUrl="https://support.example.com/forum"
             />
           </div>
           
