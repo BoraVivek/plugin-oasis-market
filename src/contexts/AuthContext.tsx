@@ -8,9 +8,11 @@ import { toast } from 'sonner';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isLoading: boolean; // Added isLoading as alias for loading
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile?: (data: Partial<User>) => Promise<void>; // Add updateProfile
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -136,8 +138,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Add updateProfile method
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      const updates = {
+        ...data,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user?.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      if (user) {
+        setUser({
+          ...user,
+          ...data
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      isLoading: loading, // Alias loading as isLoading
+      signIn, 
+      signUp, 
+      signOut,
+      updateProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

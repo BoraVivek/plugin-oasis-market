@@ -118,3 +118,18 @@ export interface ConfigItem {
   name: string;
   value: string;
 }
+
+// Add these types to support the database tables
+export interface NavItemRow {
+  id: string;
+  label: string;
+  href: string;
+  position: number;
+  type: string;
+}
+
+export interface ConfigItemRow {
+  id: string;
+  name: string;
+  value: string;
+}
