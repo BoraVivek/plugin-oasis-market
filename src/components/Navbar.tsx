@@ -25,13 +25,7 @@ import {
 import { Search, Menu, ShoppingCart, Heart, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-
-interface NavItem {
-  id: string;
-  label: string;
-  href: string;
-  position: number;
-}
+import { NavItem } from "@/lib/types";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -53,10 +47,10 @@ const Navbar = () => {
           .eq('type', 'main')
           .order('position', { ascending: true });
         
-        return data || [];
+        return data as NavItem[] || [];
       } catch (error) {
         console.error('Error loading nav items:', error);
-        return [];
+        return [] as NavItem[];
       }
     }
   });
@@ -94,7 +88,7 @@ const Navbar = () => {
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
             <nav className="grid gap-4">
-              {navItems.map((item: NavItem) => (
+              {(navItems as NavItem[]).map((item: NavItem) => (
                 <Link 
                   key={item.id}
                   to={item.href}
@@ -133,7 +127,7 @@ const Navbar = () => {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center space-x-6 flex-1">
-          {navItems.map((item: NavItem) => (
+          {(navItems as NavItem[]).map((item: NavItem) => (
             <Link 
               key={item.id}
               to={item.href}

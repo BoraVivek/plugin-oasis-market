@@ -19,24 +19,11 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, DragHandleDots2Icon } from "lucide-react";
+import { X, Plus, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-
-interface NavItem {
-  id: string;
-  label: string;
-  href: string;
-  position: number;
-  type: string;
-}
-
-interface ConfigItem {
-  id: string;
-  name: string;
-  value: string;
-}
+import { NavItem, ConfigItem } from '@/lib/types';
 
 const SettingsAdmin = () => {
   const queryClient = useQueryClient();
@@ -45,31 +32,43 @@ const SettingsAdmin = () => {
   const [newCategory, setNewCategory] = useState("");
   const [newNavItem, setNewNavItem] = useState({ label: "", href: "" });
   
-  // Query for maintenance mode
-  const { data: configData } = useQuery({
-    queryKey: ['siteConfig'],
+  // Query for nav items - we need to handle this separately since it's not in the types.ts file
+  const { data: navItems = [], refetch: refetchNavItems } = useQuery({
+    queryKey: ['navItems'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('config')
-        .select('*');
-      return data || [];
+      try {
+        const { data } = await supabase
+          .from('nav_items')
+          .select('*')
+          .order('position', { ascending: true });
+          
+        return data as NavItem[] || [];
+      } catch (error) {
+        console.error('Error fetching nav items:', error);
+        return [];
+      }
     }
   });
   
-  // Query for nav items
-  const { data: navItems, refetch: refetchNavItems } = useQuery({
-    queryKey: ['navItems'],
+  // Query for config items - we need to handle this separately since it's not in the types.ts file
+  const { data: configData = [] } = useQuery({
+    queryKey: ['siteConfig'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('nav_items')
-        .select('*')
-        .order('position', { ascending: true });
-      return data || [];
+      try {
+        const { data } = await supabase
+          .from('config')
+          .select('*');
+          
+        return data as ConfigItem[] || [];
+      } catch (error) {
+        console.error('Error fetching config:', error);
+        return [];
+      }
     }
   });
   
   // Query for platforms and categories
-  const { data: products, refetch: refetchProducts } = useQuery({
+  const { data: products = [], refetch: refetchProducts } = useQuery({
     queryKey: ['productsForSettings'],
     queryFn: async () => {
       const { data } = await supabase
@@ -98,11 +97,8 @@ const SettingsAdmin = () => {
     setMaintenanceMode(newValue);
     
     try {
-      const { data: existingConfig } = await supabase
-        .from('config')
-        .select('*')
-        .eq('name', 'maintenance_mode')
-        .single();
+      // Find existing config
+      const existingConfig = configData.find((item: ConfigItem) => item.name === 'maintenance_mode');
       
       if (existingConfig) {
         // Update existing config
@@ -319,7 +315,7 @@ const SettingsAdmin = () => {
                       .map((item: NavItem) => (
                         <div key={item.id} className="flex items-center justify-between bg-muted/30 rounded-md p-2">
                           <div className="flex items-center gap-2">
-                            <DragHandleDots2Icon className="h-4 w-4 text-muted-foreground" />
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{item.label}</span>
                             <span className="text-sm text-muted-foreground">{item.href}</span>
                           </div>
