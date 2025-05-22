@@ -38,6 +38,7 @@ export interface ProductVersion {
   file_url?: string;
   file_size?: number;
   created_at?: string;
+  file_path?: string; // Added for file upload/download
 }
 
 export interface Review {

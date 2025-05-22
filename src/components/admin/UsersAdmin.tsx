@@ -27,17 +27,34 @@ const UsersAdmin = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['adminUsers'],
     queryFn: async () => {
-      // Fetch profiles with user emails directly using a more compatible join approach
+      // Using separate queries instead of joins to avoid TypeScript parsing errors
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('*, auth_user:auth.users!id(email, created_at)')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) {
-        console.error('Error fetching users:', error);
+        console.error('Error fetching profiles:', error);
         throw error;
       }
-      return profiles;
+      
+      // Fetch emails separately for each user
+      if (profiles && profiles.length > 0) {
+        const userIds = profiles.map(profile => profile.id);
+        const { data: authUsers } = await supabase.auth.admin.listUsers();
+        
+        // Merge the data
+        return profiles.map(profile => {
+          const authUser = authUsers?.users?.find(user => user.id === profile.id);
+          return {
+            ...profile,
+            email: authUser?.email || 'No email',
+            authCreatedAt: authUser?.created_at || profile.created_at
+          };
+        });
+      }
+      
+      return profiles || [];
     }
   });
 
@@ -50,20 +67,6 @@ const UsersAdmin = () => {
       default:
         return <Badge variant="outline">Customer</Badge>;
     }
-  };
-
-  const getUserEmail = (user: any) => {
-    if (user.auth_user && user.auth_user.email) {
-      return user.auth_user.email;
-    }
-    return 'No email';
-  };
-
-  const getCreatedAt = (user: any) => {
-    if (user.auth_user && user.auth_user.created_at) {
-      return formatDate(user.auth_user.created_at);
-    }
-    return formatDate(user.created_at);
   };
 
   return (
@@ -93,7 +96,6 @@ const UsersAdmin = () => {
               <TableBody>
                 {users?.map((user) => {
                   const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Anonymous';
-                  const email = getUserEmail(user);
                   const initials = name.substring(0, 2).toUpperCase();
                   
                   return (
@@ -106,14 +108,14 @@ const UsersAdmin = () => {
                           </Avatar>
                           <div>
                             <div className="font-medium">{name}</div>
-                            <div className="text-sm text-muted-foreground">{email}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         {getRoleBadge(user.role || 'customer')}
                       </TableCell>
-                      <TableCell>{getCreatedAt(user)}</TableCell>
+                      <TableCell>{formatDate(user.authCreatedAt || user.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm">
                           <UserCog className="mr-2 h-4 w-4" />

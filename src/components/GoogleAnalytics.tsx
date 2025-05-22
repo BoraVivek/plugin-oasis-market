@@ -1,6 +1,7 @@
 
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { AnalyticsEvent } from '@/lib/types';
 
 // GA measurement ID
 const TRACKING_ID = 'G-XXXXXXXXXX'; // Replace with your actual Google Analytics tracking ID
@@ -40,25 +41,42 @@ const GoogleAnalytics = () => {
         console.log(`Tracked pageview: ${path}`);
       }
     };
+    
+    // Function to track events
+    const trackEvent = (event: AnalyticsEvent) => {
+      if (window.gtag) {
+        window.gtag('event', event.name, {
+          event_category: event.category || 'User Interaction',
+          event_label: event.label || undefined,
+          value: event.value,
+          non_interaction: event.nonInteraction
+        });
+        console.log(`Tracked event: ${event.name}`);
+      }
+    };
 
     // Function to set up event listeners
     const setupEventListeners = () => {
       // Find all elements with data-event attributes
       document.querySelectorAll('[data-event]').forEach(element => {
         const eventName = element.getAttribute('data-event');
+        const category = element.getAttribute('data-event-category') || 'User Interaction';
+        const label = element.getAttribute('data-event-label') || element.textContent;
+        
         if (eventName) {
           element.addEventListener('click', () => {
-            if (window.gtag) {
-              window.gtag('event', eventName, {
-                event_category: 'User Interaction',
-                event_label: element.textContent || eventName
-              });
-              console.log(`Tracked event: ${eventName}`);
-            }
+            trackEvent({
+              name: eventName,
+              category,
+              label: label || undefined
+            });
           });
         }
       });
     };
+
+    // Expose tracking functions to the window for use in other components
+    window.trackAnalyticsEvent = trackEvent;
 
     // Track page view when location changes
     trackPageView(location.pathname + location.search);
@@ -75,7 +93,7 @@ const GoogleAnalytics = () => {
   return null; // This component doesn't render anything
 };
 
-// Add global type definitions for gtag
+// Add global type definitions for gtag and our tracking functions
 declare global {
   interface Window {
     gtag: (
@@ -84,6 +102,7 @@ declare global {
       config?: Record<string, any>
     ) => void;
     dataLayer: any[];
+    trackAnalyticsEvent: (event: AnalyticsEvent) => void;
   }
 }
 
