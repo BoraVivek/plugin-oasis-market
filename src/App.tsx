@@ -33,13 +33,13 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
               <GoogleAnalytics />
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -53,11 +53,11 @@ const App = () => (
                 <Route path="/dashboard/*" element={<AdminRoute><Dashboard /></AdminRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </WishlistProvider>
-      </CartProvider>
-    </AuthProvider>
+            </TooltipProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

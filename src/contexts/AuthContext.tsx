@@ -97,8 +97,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate('/');
       toast.success('Signed in successfully');
+      // Navigate after successful sign in
+      if (navigate) {
+        navigate('/');
+      }
     } catch (error: any) {
       toast.error(`Sign in error: ${error.message}`);
       throw error;
@@ -121,7 +124,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) throw error;
       
       toast.success('Account created successfully! Please sign in.');
-      navigate('/auth?mode=signin');
+      // Navigate after successful sign up
+      if (navigate) {
+        navigate('/auth?mode=signin');
+      }
     } catch (error: any) {
       toast.error(`Sign up error: ${error.message}`);
       throw error;
@@ -131,7 +137,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      navigate('/');
+      if (navigate) {
+        navigate('/');
+      }
       toast.success('Signed out successfully');
     } catch (error: any) {
       toast.error(`Sign out error: ${error.message}`);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,7 @@ import { X, Plus, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { NavItem, ConfigItem } from '@/lib/types';
+import { NavItem, ConfigItem } from '@/lib/customTypes';
 
 const SettingsAdmin = () => {
   const queryClient = useQueryClient();
@@ -38,14 +37,14 @@ const SettingsAdmin = () => {
     queryFn: async () => {
       try {
         const { data } = await supabase
-          .from('nav_items')
+          .from('nav_items' as any)
           .select('*')
           .order('position', { ascending: true });
           
-        return data as NavItem[] || [];
+        return (data || []) as NavItem[];
       } catch (error) {
         console.error('Error fetching nav items:', error);
-        return [];
+        return [] as NavItem[];
       }
     }
   });
@@ -56,13 +55,13 @@ const SettingsAdmin = () => {
     queryFn: async () => {
       try {
         const { data } = await supabase
-          .from('config')
+          .from('config' as any)
           .select('*');
           
-        return data as ConfigItem[] || [];
+        return (data || []) as ConfigItem[];
       } catch (error) {
         console.error('Error fetching config:', error);
-        return [];
+        return [] as ConfigItem[];
       }
     }
   });
@@ -103,14 +102,17 @@ const SettingsAdmin = () => {
       if (existingConfig) {
         // Update existing config
         await supabase
-          .from('config')
+          .from('config' as any)
           .update({ value: String(newValue) })
           .eq('id', existingConfig.id);
       } else {
         // Insert new config
         await supabase
-          .from('config')
-          .insert({ name: 'maintenance_mode', value: String(newValue) });
+          .from('config' as any)
+          .insert({ 
+            name: 'maintenance_mode', 
+            value: String(newValue)
+          } as any);
       }
       
       toast.success(`Maintenance mode ${newValue ? 'enabled' : 'disabled'}`);
